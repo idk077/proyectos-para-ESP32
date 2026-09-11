@@ -1,0 +1,65 @@
+#include <WiFi.h>
+#include <PubSubClient.h>
+
+// Credenciales Wi-Fi y Broker
+const char* ssid = "TU_RED_WIFI";
+const char* password = "TU_PASSWORD";
+const char* mqtt_server = "broker.hivemq.com"; // Broker público de pruebas
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+const int sensorPin = 14; 
+int estadoSensor = 0;
+int ultimoEstado = 0;
+
+void setup_wifi() {
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nWi-Fi conectado.");
+}
+
+void reconnect() {
+  while (!client.connected()) {
+    if (client.connect("ESP32_IDS_Client_01")) {
+      Serial.println("Conectado al broker MQTT");
+    } else {
+      delay(5000);
+    }
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(sensorPin, INPUT_PULLUP); // Sensor conectado a GND al cerrarse
+  
+  setup_wifi();
+  client.setServer(mqtt_server, 1883);
+}
+
+void loop() {
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
+
+  estadoSensor = digitalRead(sensorPin);
+  
+  // Si hay un cambio de estado (alguien abrió la puerta / activó el sensor)
+  if (estadoSensor != ultimoEstado) {
+    ultimoEstado = estadoSensor;
+    
+    if (estadoSensor == HIGH) { 
+      Serial.println("¡Intrusión detectada!");
+      // Crear payload en formato JSON
+      String payload = "{\"alerta\": \"intrusion\", \"sensor\": 14, \"nivel\": \"critico\"}";
+      
+      // Publicar en el topic MQTT
+      client.publish("seguridad/ids/alertas", payload.c_str());
+    }
+    delay(500); // Debounce básico
+  }
+}
