@@ -1,0 +1,35 @@
+#include <WiFi.h>
+
+void setup() {
+  Serial.begin(115200);
+  
+  // Configuramos el ESP32 en modo Estación (Cliente) y desconectamos de cualquier red
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(100);
+  
+  Serial.println("Iniciando auditoría de espectro Wi-Fi...");
+}
+
+void loop() {
+  Serial.println("Escaneando redes...");
+  int n = WiFi.scanNetworks();
+  
+  if (n == 0) {
+    Serial.println("No se encontraron redes.");
+  } else {
+    Serial.print(n);
+    Serial.println(" redes encontradas:");
+    for (int i = 0; i < n; ++i) {
+      // Imprimir SSID, RSSI (fuerza de señal) y tipo de cifrado
+      Serial.printf("%d: %s (%d dBm) %s\n", 
+                    i + 1, 
+                    WiFi.SSID(i).c_str(), 
+                    WiFi.RSSI(i), 
+                    (WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? "Abierta \n" : "Cifrada \n");
+      delay(10);
+    }
+  }
+  Serial.println("-----------------------");
+  delay(5000); // Esperar 5 segundos antes del siguiente escaneo
+}
